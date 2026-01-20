@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, watch, ref, type WatchStopHandle } from 'vue'
+import { onMounted, onUnmounted, ref } from 'vue'
 import type { StarData } from '~/data/mythologyData'
 import { convertMultipleSparqlResults, type SparqlMythologyResult } from '~/utils/sparqlDataConverter'
 
@@ -24,13 +24,6 @@ const mythologyMap: Record<string, string> = {
   'wd:Q465434': 'Celtic',
 }
 
-let stopLayoutWatch: WatchStopHandle | null = null
-
-const applyLayout = (value: boolean) => {
-  if (!import.meta.client) return
-  setPageLayout(value ? 'fullscreen' : 'default')
-  isCanvasFullscreen.value = value
-}
 // Prevent browser fullscreen; only toggle canvas stretch
 const toggleCanvasFullscreen = () => {
   const next = !isCanvasFullscreen.value
@@ -131,17 +124,11 @@ const handleQueryUpdate = (query: string) => {
 }
 
 onMounted(() => {
-  applyLayout(isFullscreen.value)
-  stopLayoutWatch = watch(isFullscreen, (newValue) => {
-    applyLayout(newValue)
-  })
   window.addEventListener('keydown', handleKeyPress)
 })
 
 onUnmounted(() => {
   window.removeEventListener('keydown', handleKeyPress)
-  if (stopLayoutWatch) stopLayoutWatch()
-  applyLayout(false)
 })
 </script>
 
