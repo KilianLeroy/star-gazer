@@ -7,5 +7,12 @@
 </template>
 
 <script setup lang="ts">
-
+useHead({
+  link: [
+    {
+      rel: 'webmention',
+      href: '/api/webmentions'
+    }
+  ]
+})
 </script>

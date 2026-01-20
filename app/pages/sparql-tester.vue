@@ -57,7 +57,7 @@ function isImageField(key: string, value: unknown): boolean {
         <template #header>
           <h2 class="text-2xl font-semibold">Build & Execute Deity Search</h2>
         </template>
-        <SparqlSearch @query="onSearchQuery" @run="onRun" />
+        <SparqlSearch @query="onSearchQuery" @run="onRun" :showPureDomainsToggle="false" />
       </UCard>
 
       <UCard class="mb-8">

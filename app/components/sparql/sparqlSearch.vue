@@ -1,6 +1,7 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
+import { computed, watch, withDefaults } from 'vue'
 import { buildDeityQuery } from '~/data/sparqlQueries'
+import { useSparqlSearchStore } from '~/composables/useSparqlSearchStore'
 
 const emit = defineEmits<{
   (e: 'query', value: string): void
@@ -8,6 +9,10 @@ const emit = defineEmits<{
   (e: 'run', value: string): void
   (e: 'pure-filter', value: boolean): void
 }>()
+
+const props = withDefaults(defineProps<{ showPureDomainsToggle?: boolean }>(), {
+  showPureDomainsToggle: true,
+})
 
 const deityTypes = [
   { label: 'Greek', value: 'wd:Q22989102' },
@@ -17,17 +22,19 @@ const deityTypes = [
   { label: 'Celtic', value: 'wd:Q465434' },
 ]
 
-const selectedTypes = ref<string[]>([deityTypes[0]!.value])
-const includeDomain = ref(true)
-const requireDomain = ref(false)
-const includeFamily = ref(true)
-const includeImage = ref(true)
-const includeArticle = ref(true)
-const includeDescription = ref(true)
-const limit = ref(100)
-const orderBy = ref<string[]>(['?deityLabel'])
-const extraFilters = ref('')
-const pureDomainsOnly = ref(false)
+const {
+  selectedTypes,
+  includeDomain,
+  requireDomain,
+  includeFamily,
+  includeImage,
+  includeArticle,
+  includeDescription,
+  limit,
+  orderBy,
+  extraFilters,
+  pureDomainsOnly,
+} = useSparqlSearchStore()
 
 const builtQuery = computed(() =>
   buildDeityQuery({
@@ -97,7 +104,12 @@ function runQuery() {
           <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
             <UCheckbox v-model="includeDomain" label="Include Domain" />
             <UCheckbox v-model="requireDomain" :disabled="!includeDomain" label="Only gods with domain" />
-            <UCheckbox v-model="pureDomainsOnly" :disabled="!includeDomain" label="Only dense domains (≥3)" />
+            <UCheckbox
+              v-if="props.showPureDomainsToggle"
+              v-model="pureDomainsOnly"
+              :disabled="!includeDomain"
+              label="Only dense domains (≥3)"
+            />
             <UCheckbox v-model="includeFamily" label="Family (parents/children)" />
             <UCheckbox v-model="includeImage" label="Image" />
             <UCheckbox v-model="includeArticle" label="Wikipedia article" />
