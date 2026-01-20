@@ -112,13 +112,6 @@ const submitWebmention = async () => {
       </UButton>
     </UForm>
 
-    <div class="info-box">
-      <UIcon name="i-heroicons-information-circle" />
-      <p>
-        A webmention notifies us when you link to this page from your own site.
-        Learn more about <a href="https://webmention.net/" target="_blank" rel="noopener noreferrer">Webmentions</a>.
-      </p>
-    </div>
   </div>
 </template>
 
@@ -144,32 +137,6 @@ const submitWebmention = async () => {
   display: flex;
   flex-direction: column;
   gap: 1rem;
-  margin-bottom: 1.5rem;
 }
 
-.info-box {
-  display: flex;
-  gap: 0.75rem;
-  padding: 1rem;
-  background: rgba(59, 130, 246, 0.1);
-  border: 1px solid rgba(59, 130, 246, 0.3);
-  border-radius: 0.5rem;
-  font-size: 0.875rem;
-  color: rgba(255, 255, 255, 0.8);
-  align-items: flex-start;
-}
-
-.info-box p {
-  margin: 0;
-  line-height: 1.5;
-}
-
-.info-box a {
-  color: #60a5fa;
-  text-decoration: underline;
-}
-
-.info-box a:hover {
-  color: #93c5fd;
-}
 </style>
