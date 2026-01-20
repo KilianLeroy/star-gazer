@@ -1,18 +1,39 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, ref } from 'vue'
+import { onMounted, onUnmounted, ref, computed } from 'vue'
 import type { StarData } from '~/data/mythologyData'
 import { convertMultipleSparqlResults, type SparqlMythologyResult } from '~/utils/sparqlDataConverter'
+import WebmentionDisplay from '~/components/webmention/WebmentionDisplay.vue'
+import WebmentionForm from '~/components/webmention/WebmentionForm.vue'
 
 const { isFullscreen, setFullscreen } = useFullscreen()
 // Note: isFullscreen now just drives layout; no browser fullscreen is requested.
 const { executeSpecificQuery, loading, error, results } = useSparqlQuery()
 const { constellationData, setConstellationData } = useConstellationStore()
 
+const toast = useToast()
+
 const showSparqlSearch = ref(false)
 const currentMythology = ref<string>('Greek')
 const useDomainClustering = ref(true)
 const pureDomainsOnly = ref(false)
 const isCanvasFullscreen = ref(false)
+
+// Get current page URL for webmentions
+const currentPageUrl = computed(() => {
+  if (typeof window !== 'undefined') {
+    return window.location.href
+  }
+  return ''
+})
+
+const onWebmentionSent = () => {
+  toast.add({
+    title: 'Webmention Sent',
+    description: 'Your webmention has been received and will appear once verified!',
+    color: 'success',
+    icon: 'i-heroicons-check-circle'
+  })
+}
 
 
 // Map of Wikidata entity IDs to mythology names
@@ -218,6 +239,7 @@ onUnmounted(() => {
       <ThreeStarField :constellation-data="constellationData" />
     </section>
 
+    <!-- Content section -->
     <section class="content">
       <div class="info-grid">
         <div class="info-card">
@@ -236,6 +258,31 @@ onUnmounted(() => {
           <h3>Immersive Experience</h3>
           <p>Press <kbd>F</kbd> for fullscreen mode. Use your mouse to rotate, zoom, and navigate the cosmic mythology network.</p>
         </div>
+      </div>
+    </section>
+
+    <!-- Webmentions section -->
+    <section class="webmentions-section">
+      <h2>Webmentions</h2>
+      <p class="section-description">
+        Connect with others across the web using Webmentions - a standard for conversations between websites.
+      </p>
+
+      <!-- Form to submit webmentions -->
+      <div class="webmention-submit-section">
+        <WebmentionForm
+          :target="currentPageUrl"
+          @sent="onWebmentionSent"
+        />
+      </div>
+
+      <!-- Display received webmentions -->
+      <div class="webmention-display-section">
+        <h3>Received Webmentions</h3>
+        <WebmentionDisplay
+          :target="currentPageUrl"
+          :auto-load="true"
+        />
       </div>
     </section>
   </div>
@@ -403,5 +450,47 @@ kbd {
     background: rgb(55 65 81);
     border-color: rgb(75 85 99);
   }
+}
+
+/* Webmentions section */
+.webmentions-section {
+  padding: 2rem 0;
+}
+
+.webmentions-section h2 {
+  margin-bottom: 1rem;
+  font-size: 1.875rem;
+  font-weight: 700;
+}
+
+.section-description {
+  color: rgb(107 114 128);
+  margin-bottom: 1.5rem;
+  font-size: 0.95rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  .section-description {
+    color: rgba(255, 255, 255, 0.7);
+  }
+}
+
+.webmention-submit-section {
+  margin-bottom: 2rem;
+  padding: 1.5rem;
+  background: rgba(255, 255, 255, 0.02);
+  border-radius: 0.5rem;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+.webmention-display-section {
+  padding-top: 1rem;
+}
+
+.webmention-display-section h3 {
+  font-size: 1.25rem;
+  font-weight: 600;
+  margin-bottom: 1.5rem;
+  color: rgba(255, 255, 255, 0.9);
 }
 </style>
