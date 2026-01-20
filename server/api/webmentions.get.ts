@@ -19,7 +19,7 @@ function normalizeUrl(urlString: string): string {
     } else if (url.pathname.endsWith('/')) {
       url.pathname = url.pathname.slice(0, -1)
     }
-    return url.toString().replace(/\/$/, '') // Remove trailing slash from full URL
+    return url.toString().replace(/\/$/, '')
   } catch (err) {
     return urlString
   }
@@ -41,7 +41,34 @@ export default defineEventHandler(async (event) => {
 
     if (target) {
       const normalizedTarget = normalizeUrl(target)
-      webmentions = webmentions.filter(wm => normalizeUrl(wm.target) === normalizedTarget)
+
+      let targetBaseUrl = ''
+      try {
+        const targetUrl = new URL(target)
+        targetBaseUrl = normalizeUrl(`${targetUrl.protocol}//${targetUrl.host}/`)
+      } catch (err) {
+        targetBaseUrl = normalizedTarget
+      }
+
+      webmentions = webmentions.filter(wm => {
+        const normalizedWebmentionTarget = normalizeUrl(wm.target)
+
+        if (normalizedWebmentionTarget === normalizedTarget) {
+          return true
+        }
+
+        let wmBaseUrl = ''
+        try {
+          const wmTargetUrl = new URL(wm.target)
+          wmBaseUrl = normalizeUrl(`${wmTargetUrl.protocol}//${wmTargetUrl.host}/`)
+        } catch (err) {
+          wmBaseUrl = normalizedWebmentionTarget
+        }
+
+        return wmBaseUrl === targetBaseUrl && normalizedWebmentionTarget === wmBaseUrl;
+
+
+      })
     }
 
     webmentions.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
