@@ -3,6 +3,21 @@ import { join } from 'path'
 import { randomUUID } from 'crypto'
 import { verifyWebmention, parseWebmentionSource, type Webmention } from '../utils/webmention'
 
+// Normalize a URL for consistent storage/comparison (aligns with GET handler)
+const normalizeUrl = (urlString: string): string => {
+  try {
+    const url = new URL(urlString)
+    if (url.pathname === '/') {
+      url.pathname = ''
+    } else if (url.pathname.endsWith('/')) {
+      url.pathname = url.pathname.slice(0, -1)
+    }
+    return url.toString().replace(/\/$/, '')
+  } catch (err) {
+    return urlString
+  }
+}
+
 const webmentionsFilePath = join(process.cwd(), 'public', 'data', 'webmentions.json')
 
 export default defineEventHandler(async (event) => {
@@ -16,6 +31,7 @@ export default defineEventHandler(async (event) => {
   }
 
   const { source, target } = body
+  const normalizedTarget = normalizeUrl(target)
 
   // Validate URLs
   try {
@@ -42,11 +58,11 @@ export default defineEventHandler(async (event) => {
     // Parse microformats from the source
     const parsedData = await parseWebmentionSource(source)
 
-    // Create webmention entry
+    // Create webmention entry (store normalized target)
     const webmention: Webmention = {
       id: randomUUID(),
       source,
-      target,
+      target: normalizedTarget,
       timestamp: new Date().toISOString(),
       verified: true,
       type: parsedData.type || 'mention',
@@ -67,9 +83,9 @@ export default defineEventHandler(async (event) => {
       webmentions = []
     }
 
-    // Check for duplicates (same source and target)
+    // Check for duplicates (same source and normalized target)
     const existingIndex = webmentions.findIndex(
-      wm => wm.source === source && wm.target === target
+      wm => wm.source === source && normalizeUrl(wm.target) === normalizedTarget
     )
 
     if (existingIndex >= 0) {
@@ -101,4 +117,3 @@ export default defineEventHandler(async (event) => {
     })
   }
 })
-
