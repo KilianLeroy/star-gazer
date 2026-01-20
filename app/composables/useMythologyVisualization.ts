@@ -41,7 +41,6 @@ export function useMythologyVisualization(
     const centerX = 64
     const centerY = 64
 
-    // Draw outer glow (largest)
     const outerGlow = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, 64)
     outerGlow.addColorStop(0, 'rgba(255, 255, 255, 0.8)')
     outerGlow.addColorStop(0.2, 'rgba(255, 255, 255, 0.4)')
@@ -50,11 +49,9 @@ export function useMythologyVisualization(
     ctx.fillStyle = outerGlow
     ctx.fillRect(0, 0, 128, 128)
 
-    // Draw bright center with cross flare
     ctx.save()
     ctx.translate(centerX, centerY)
 
-    // Horizontal flare
     const hFlare = ctx.createLinearGradient(-60, 0, 60, 0)
     hFlare.addColorStop(0, 'rgba(255, 255, 255, 0)')
     hFlare.addColorStop(0.5, 'rgba(255, 255, 255, 0.9)')
@@ -62,7 +59,6 @@ export function useMythologyVisualization(
     ctx.fillStyle = hFlare
     ctx.fillRect(-60, -2, 120, 4)
 
-    // Vertical flare
     const vFlare = ctx.createLinearGradient(0, -60, 0, 60)
     vFlare.addColorStop(0, 'rgba(255, 255, 255, 0)')
     vFlare.addColorStop(0.5, 'rgba(255, 255, 255, 0.9)')
@@ -70,7 +66,6 @@ export function useMythologyVisualization(
     ctx.fillStyle = vFlare
     ctx.fillRect(-2, -60, 4, 120)
 
-    // Diagonal flares (softer)
     ctx.rotate(Math.PI / 4)
     const d1Flare = ctx.createLinearGradient(-50, 0, 50, 0)
     d1Flare.addColorStop(0, 'rgba(255, 255, 255, 0)')
@@ -88,7 +83,6 @@ export function useMythologyVisualization(
 
     ctx.restore()
 
-    // Draw bright core
     const coreGradient = ctx.createRadialGradient(centerX, centerY, 0, centerX, centerY, 20)
     coreGradient.addColorStop(0, 'rgba(255, 255, 255, 1)')
     coreGradient.addColorStop(0.3, 'rgba(255, 255, 255, 0.95)')
@@ -149,7 +143,6 @@ export function useMythologyVisualization(
     geometry.setAttribute('color', new THREE.Float32BufferAttribute(colors, 3))
     geometry.setAttribute('size', new THREE.Float32BufferAttribute(sizes, 1))
 
-    // Store animation data for later use
     starfieldOpacities = new Float32Array(opacities)
     starfieldTwinkleSpeeds = new Float32Array(twinkleSpeeds)
     starfieldPhases = new Float32Array(phases)
@@ -173,13 +166,11 @@ export function useMythologyVisualization(
    * Call this in your animation loop
    */
   function animateStarfield(time: number): void {
-    // Animate background starfield twinkling
     if (starfieldPoints && starfieldOpacities && starfieldTwinkleSpeeds && starfieldPhases) {
       const geometry = starfieldPoints.geometry
       const sizes = geometry.getAttribute('size') as THREE.BufferAttribute
       const sizeArray = sizes.array as Float32Array
 
-      // Update each star's size to create twinkling effect
       for (let i = 0; i < starfieldOpacities.length; i++) {
         const baseSize = starfieldOpacities[i]
         const speed = starfieldTwinkleSpeeds[i]
@@ -189,10 +180,8 @@ export function useMythologyVisualization(
           continue
         }
 
-        // Use sine wave for smooth twinkling
         const twinkle = Math.sin(time * 0.001 * speed + phase) * 0.5 + 0.5
 
-        // Vary the size based on twinkle (some stars twinkle more than others)
         const sizeMultiplier = 0.7 + twinkle * 0.6
         sizeArray[i] = baseSize * sizeMultiplier * 0.1
       }
@@ -200,15 +189,12 @@ export function useMythologyVisualization(
       sizes.needsUpdate = true
     }
 
-    // Animate mythology stars with gentle pulsing
     mythologyStarData.forEach((data, star) => {
       const pulse = Math.sin(time * 0.001 * data.pulseSpeed + data.pulsePhase) * 0.5 + 0.5
 
-      // Gentle breathing effect - stars pulse between 90% and 110% of their base size
       const scale = data.baseScale * (0.9 + pulse * 0.2)
       star.scale.set(scale, scale, 1)
 
-      // Subtle opacity variation for extra life
       const material = star.material as THREE.SpriteMaterial
       material.opacity = 0.85 + pulse * 0.15
     })
@@ -218,34 +204,26 @@ export function useMythologyVisualization(
    * Initialize the mythology visualization
    */
   function init(mythData: StarData[]): void {
-    // Clear previous data
     clearScene()
 
-    // Add fog effect for fade when camera moves far
     scene.fog = new THREE.Fog(0x000510, FOG_NEAR, FOG_FAR)
 
-    // Add background starfield
     const starfield = createStarfield()
     scene.add(starfield)
     sceneObjects.push(starfield)
 
-    // Create star texture once
     const starTexture = createStarTexture()
 
-    // Calculate star importance metrics first to normalize sizing
     const importanceScores = mythData.map(data => data.relations.length)
     const maxImportance = Math.max(...importanceScores, 1)
 
-    // Add mythology stars with enhanced visuals
     mythData.forEach((data) => {
-      // Determine color based on domain cluster or mythology
       let colorHex = 0xffffff
       if (data.domainCluster) {
         const domainColor = getDomainColor(data.domainCluster)
         colorHex = parseInt(domainColor.replace('#', ''), 16)
       }
 
-      // Calculate star importance based on number of relations (like star magnitude in real constellations)
       const importance = data.relations.length
       const brightnessMultiplier = Math.min(1.0, 0.5 + importance * 0.1) // Brighter for more connected deities
 
@@ -254,23 +232,20 @@ export function useMythologyVisualization(
         color: colorHex,
         transparent: true,
         opacity: brightnessMultiplier,
-        blending: THREE.AdditiveBlending, // Makes stars glow more intensely
+        blending: THREE.AdditiveBlending,
         depthTest: true,
         depthWrite: false,
       })
 
       const star = new THREE.Sprite(material)
 
-      // Vary star sizes based on importance (like magnitude in real constellations)
-      // More connections = larger, brighter star (like alpha stars in constellations)
-      // Use logarithmic scaling for more realistic magnitude differences
+
       const normalizedImportance = importance / maxImportance
       const baseScale = 0.5 + Math.pow(normalizedImportance, 0.6) * 1.2
       star.scale.set(baseScale, baseScale, 1)
       star.position.set(data.position.x, data.position.y, data.position.z)
       star.userData = data
 
-      // Store animation data for this star
       mythologyStarData.set(star, {
         baseScale,
         pulseSpeed: THREE.MathUtils.randFloat(0.8, 2.0),
@@ -283,7 +258,6 @@ export function useMythologyVisualization(
       sceneObjects.push(star)
     })
 
-    // Create subtle halos around constellation clusters
     const clusterCenters = new Map<string, { center: THREE.Vector3; count: number; color: number }>()
 
     mythData.forEach((data) => {
@@ -304,7 +278,6 @@ export function useMythologyVisualization(
 
 
 
-    // Add connection lines between related deities (like constellation lines)
     mythData.forEach((data) => {
       data.relations.forEach((targetId) => {
         const start = starMap.get(data.id)?.position
@@ -313,32 +286,28 @@ export function useMythologyVisualization(
         if (start && end) {
           const geometry = new THREE.BufferGeometry().setFromPoints([start, end])
 
-          // Calculate distance between stars for varied line opacity
           const distance = start.distanceTo(end)
-          // Closer stars = more visible connections (like patterns in real constellations)
           const distanceOpacity = Math.max(0.08, 0.3 - distance * 0.02)
 
-          // Check if stars are in the same domain cluster for color coding
           const startStar = starMap.get(data.id)
           const endStar = starMap.get(targetId)
           const startData = startStar?.userData as StarData
           const endData = endStar?.userData as StarData
 
-          let lineColor = 0x4a5568 // Default gray
+          let lineColor = 0x4a5568
           let lineOpacity = distanceOpacity
 
-          // Make lines within same domain cluster more visible
           if (startData?.domainCluster && endData?.domainCluster &&
               startData.domainCluster === endData.domainCluster) {
             const clusterColor = getDomainColor(startData.domainCluster)
             lineColor = parseInt(clusterColor.replace('#', ''), 16)
-            lineOpacity = distanceOpacity * 1.5 // More visible within clusters
+            lineOpacity = distanceOpacity * 1.5
           }
 
           const material = new THREE.LineBasicMaterial({
             color: lineColor,
             transparent: true,
-            opacity: lineOpacity, // Use calculated opacity directly
+            opacity: lineOpacity,
             blending: THREE.NormalBlending,
             depthTest: true,
             depthWrite: false,
@@ -351,7 +320,6 @@ export function useMythologyVisualization(
       })
     })
 
-    // Create labels for stars
     mythData.forEach((data) => {
       const div = document.createElement('div')
       div.className = 'mythology-label'
@@ -372,10 +340,8 @@ export function useMythologyVisualization(
    * Clear all scene objects and labels
    */
   function clearScene(): void {
-    // Remove all scene objects
     sceneObjects.forEach((obj) => {
       scene.remove(obj)
-      // Dispose geometries and materials
       const anyObj = obj as any
       if (anyObj.geometry) {
         anyObj.geometry.dispose()
@@ -390,23 +356,19 @@ export function useMythologyVisualization(
     })
     sceneObjects.length = 0
 
-    // Remove all labels
     labels.forEach(({ element }) => {
       element.remove()
     })
     labels.length = 0
 
-    // Clear arrays and maps
     stars.length = 0
     starMap.clear()
 
-    // Clear starfield animation data
     starfieldPoints = null
     starfieldOpacities = null
     starfieldTwinkleSpeeds = null
     starfieldPhases = null
 
-    // Clear mythology star animation data
     mythologyStarData.clear()
   }
 
@@ -414,34 +376,27 @@ export function useMythologyVisualization(
    * Update label positions in screen space relative to canvas container
    */
   function updateLabels(): void {
-    // Get camera position to calculate distance
     const cameraPos = (camera as THREE.PerspectiveCamera).position
 
     labels.forEach(({ element, object }) => {
       const pos = object.position.clone()
       pos.project(camera as THREE.PerspectiveCamera)
 
-      // Use the renderer's size (not getBoundingClientRect which includes pixel ratio)
       const size = new THREE.Vector2()
       renderer.getSize(size)
 
-      // Calculate position in screen pixels
       const x = (pos.x * 0.5 + 0.5) * size.x
-      const y = (-pos.y * 0.5 + 0.5) * size.y - 20 // Offset labels higher above stars
+      const y = (-pos.y * 0.5 + 0.5) * size.y - 20
 
-      // Check if the star is visible (in front of camera = z < 1 and > -1)
       const isVisible = pos.z < 1 && pos.z > -1
 
-      // Calculate distance from camera to star for fade effect
       const distanceFromCamera = cameraPos.distanceTo(object.position)
       let opacity = 1.0
 
-      // Fade out labels when camera gets too far
       if (distanceFromCamera > LABEL_FADE_START) {
         if (distanceFromCamera >= LABEL_FADE_END) {
           opacity = 0
         } else {
-          // Linear interpolation between start and end distance
           opacity = 1 - (distanceFromCamera - LABEL_FADE_START) / (LABEL_FADE_END - LABEL_FADE_START)
         }
       }
@@ -461,18 +416,15 @@ export function useMythologyVisualization(
    * Handle star clicks for information display
    */
   function onStarClick(event: MouseEvent, onStarSelected?: (data: StarData) => void): void {
-    // Get the canvas bounds for accurate coordinate calculation
     const canvasRect = renderer.domElement.getBoundingClientRect()
     const canvasWidth = canvasRect.width
     const canvasHeight = canvasRect.height
     const canvasLeft = canvasRect.left
     const canvasTop = canvasRect.top
 
-    // Calculate mouse position relative to the canvas
     const mouseX = event.clientX - canvasLeft
     const mouseY = event.clientY - canvasTop
 
-    // Normalize to -1 to 1 range
     mouse.x = (mouseX / canvasWidth) * 2 - 1
     mouse.y = -(mouseY / canvasHeight) * 2 + 1
 
