@@ -48,7 +48,7 @@ jobs:
           TARGET_DIR: ${{ secrets.PLESK_DIRECTORY }}
         run: |
           rsync -avz --delete -e "ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=yes" .output/ ${SSH_USER}@${PLESK_HOST}:${TARGET_DIR}
-          rsync -avz -e "ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=yes" public/.htaccess ${SSH_USER}@${PLESK_HOST}:${TARGET_DIR}/.htaccess
+          rsync -avz -e "ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=yes" public/ ${SSH_USER}@${PLESK_HOST}:${TARGET_DIR}
 
       - name: Cleanup SSH material
         if: always()
