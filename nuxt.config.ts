@@ -11,14 +11,18 @@ export default defineNuxtConfig({
     },
     app: {
         head: {
+            title: 'Star Gazer',
+            htmlAttrs:{
+                lang: 'en'
+            },
+            meta: [
+                { charset: 'utf-8' },
+                { name: 'viewport', content: 'width=device-width, initial-scale=1' },
+            ],
             link: [
                 {
                     rel: 'webmention',
-                    href: 'https://stargazer.kilianleroy.ikdoeict.be/api/webmentions'
-                },
-                {
-                    rel: 'me',
-                    href: 'https://stargazer.kilianleroy.ikdoeict.be/'
+                    href: '/api/webmentions'
                 },
                 {
                     rel: 'me',
