@@ -96,23 +96,7 @@ export function useMythologyVisualization(
     return new THREE.CanvasTexture(canvas)
   }
 
-  /**
-   * Create subtle halo effects around constellation clusters
-   */
-  function createClusterHalo(center: THREE.Vector3, radius: number, color: number): THREE.Mesh {
-    const geometry = new THREE.SphereGeometry(radius, 16, 16)
-    const material = new THREE.MeshBasicMaterial({
-      color: color,
-      transparent: true,
-      opacity: 0.03,
-      side: THREE.BackSide,
-      blending: THREE.AdditiveBlending,
-      depthWrite: false,
-    })
-    const halo = new THREE.Mesh(geometry, material)
-    halo.position.copy(center)
-    return halo
-  }
+
 
   /**
    * Create background starfield with twinkling effect
@@ -309,49 +293,7 @@ export function useMythologyVisualization(
       }
     })
 
-    // Add halos for clusters with 3+ stars
-    clusterCenters.forEach((cluster, name) => {
-      if (cluster.count >= 3) {
-        cluster.center.divideScalar(cluster.count) // Get average position
 
-        // Calculate radius based on star spread
-        let maxDistance = 0
-        mythData.forEach((data) => {
-          if (data.domainCluster === name) {
-            const starPos = new THREE.Vector3(data.position.x, data.position.y, data.position.z)
-            const distance = cluster.center.distanceTo(starPos)
-            maxDistance = Math.max(maxDistance, distance)
-          }
-        })
-
-        const halo = createClusterHalo(cluster.center, maxDistance + 1.5, cluster.color)
-        scene.add(halo)
-        sceneObjects.push(halo)
-
-        // Add constellation name label at cluster center
-        const clusterLabel = document.createElement('div')
-        clusterLabel.className = 'constellation-label'
-        clusterLabel.textContent = name
-        clusterLabel.style.cssText = `
-          position: absolute;
-          color: #${cluster.color.toString(16).padStart(6, '0')};
-          font-size: 14px;
-          font-weight: 600;
-          text-transform: uppercase;
-          letter-spacing: 2px;
-          opacity: 0.4;
-          pointer-events: none;
-          text-shadow: 0 0 10px rgba(255,255,255,0.3);
-        `
-        container.appendChild(clusterLabel)
-
-        // Track cluster label for positioning
-        labels.push({
-          element: clusterLabel,
-          object: { position: cluster.center } as THREE.Sprite,
-        })
-      }
-    })
 
     // Add connection lines between related deities (like constellation lines)
     mythData.forEach((data) => {
