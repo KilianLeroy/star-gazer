@@ -11,7 +11,15 @@ useHead({
   link: [
     {
       rel: 'webmention',
-      href: '/api/webmentions'
+      href: 'https://stargazer.kilianleroy.ikdoeict.be/api/webmentions'
+    },
+    {
+      rel: 'me',
+      href: 'https://stargazer.kilianleroy.ikdoeict.be/'
+    },
+    {
+      rel: 'me',
+      href: 'https://github.com/KilianLeroy'
     }
   ]
 })
