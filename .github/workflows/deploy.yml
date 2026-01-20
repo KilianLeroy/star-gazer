@@ -1,0 +1,55 @@
+name: Deploy to Plesk
+
+on:
+  push:
+    branches:
+      - main
+  workflow_dispatch:
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    env:
+      PLESK_HOST: cloudplesk.ikdoeict.be
+    steps:
+      - name: Checkout code
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: 9
+          run_install: false
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: '20'
+          cache: 'pnpm'
+
+      - name: Install dependencies
+        run: pnpm install --frozen-lockfile
+
+      - name: Build project
+        run: pnpm build
+
+      - name: Setup SSH key
+        run: |
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          echo "${{ secrets.SSH_PRIVATE_KEY }}" > ~/.ssh/id_rsa
+          chmod 600 ~/.ssh/id_rsa
+          ssh-keyscan -H $PLESK_HOST >> ~/.ssh/known_hosts
+          chmod 644 ~/.ssh/known_hosts
+
+      - name: Deploy to Plesk
+        env:
+          SSH_USER: ${{ secrets.SSH_USERNAME }}
+          TARGET_DIR: ${{ secrets.PLESK_DIRECTORY }}
+        run: |
+          rsync -avz --delete -e "ssh -i ~/.ssh/id_rsa -o StrictHostKeyChecking=yes" .output/ ${SSH_USER}@${PLESK_HOST}:${TARGET_DIR}
+
+      - name: Cleanup SSH material
+        if: always()
+        run: rm -f ~/.ssh/id_rsa ~/.ssh/known_hosts
+
