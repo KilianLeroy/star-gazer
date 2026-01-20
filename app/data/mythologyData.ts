@@ -4,6 +4,14 @@ export interface StarData {
   mythology: string
   position: { x: number; y: number; z: number }
   relations: number[]
+  description?: string
+  image?: string
+  domains?: string
+  fathers?: string
+  mothers?: string
+  children?: string
+  article?: string
+  domainCluster?: string
 }
 
 export const mythData: StarData[] = [

@@ -1,33 +1,156 @@
 <script setup lang="ts">
-import { onMounted, onUnmounted, watch } from 'vue'
+import { onMounted, onUnmounted, watch, ref, type WatchStopHandle } from 'vue'
+import type { StarData } from '~/data/mythologyData'
+import { convertMultipleSparqlResults, type SparqlMythologyResult } from '~/utils/sparqlDataConverter'
 
-const { isFullscreen, toggleFullscreen } = useFullscreen()
+const { isFullscreen, setFullscreen } = useFullscreen()
+// Note: isFullscreen now just drives layout; no browser fullscreen is requested.
+const { executeSpecificQuery, loading, error, results } = useSparqlQuery()
+const { constellationData, setConstellationData } = useConstellationStore()
 
-watch(isFullscreen, (newValue) => {
-  setPageLayout(newValue ? 'fullscreen' : 'default')
-}, { immediate: true })
+const showSparqlSearch = ref(false)
+const currentMythology = ref<string>('Greek')
+const useDomainClustering = ref(true)
+const pureDomainsOnly = ref(false)
+const isCanvasFullscreen = ref(false)
+
+
+// Map of Wikidata entity IDs to mythology names
+const mythologyMap: Record<string, string> = {
+  'wd:Q22989102': 'Greek',
+  'wd:Q16513881': 'Norse',
+  'wd:Q146083': 'Egyptian',
+  'wd:Q979507': 'Hindu',
+  'wd:Q465434': 'Celtic',
+}
+
+let stopLayoutWatch: WatchStopHandle | null = null
+
+const applyLayout = (value: boolean) => {
+  if (!import.meta.client) return
+  setPageLayout(value ? 'fullscreen' : 'default')
+  isCanvasFullscreen.value = value
+}
+// Prevent browser fullscreen; only toggle canvas stretch
+const toggleCanvasFullscreen = () => {
+  const next = !isCanvasFullscreen.value
+  isCanvasFullscreen.value = next
+  setFullscreen(next) // keep shared state in sync
+}
+const exitCanvasFullscreen = () => {
+  isCanvasFullscreen.value = false
+  setFullscreen(false)
+}
 
 const handleKeyPress = (event: KeyboardEvent) => {
   if (event.key === 'f' || event.key === 'F') {
-    toggleFullscreen()
+    toggleCanvasFullscreen()
+  }
+}
+
+const handlePureFilterChange = (val: boolean) => {
+  pureDomainsOnly.value = val
+  // Re-apply filter to current constellation data if present
+  if (constellationData.value.length > 0) {
+    setConstellationData(filterDenseDomains(constellationData.value, pureDomainsOnly.value))
+  }
+}
+
+function filterDenseDomains(stars: StarData[], enabled: boolean): StarData[] {
+  if (!enabled) return stars
+  // Count domains among stars
+  const domainCounts = new Map<string, number>()
+  stars.forEach((s) => {
+    const domains = parseDomains(s.domains)
+    const primary = domains[0]
+    if (primary) domainCounts.set(primary, (domainCounts.get(primary) || 0) + 1)
+  })
+
+  // Keep only stars whose primary domain has at least 3 members
+  return stars.filter((s) => {
+    const domains = parseDomains(s.domains)
+    const primary = domains[0]
+    if (!primary) return false
+    return (domainCounts.get(primary) || 0) >= 3
+  })
+}
+
+function parseDomains(domainString?: string): string[] {
+  if (!domainString) return []
+  return domainString
+    .split(',')
+    .map((d) => d.trim().toLowerCase())
+    .filter(Boolean)
+}
+
+const handleQueryRun = async (query: string) => {
+  try {
+    await executeSpecificQuery(query)
+
+    // Convert SPARQL results to constellation data
+    if (results.value && results.value.length > 0) {
+      // Detect which mythologies are in the query
+      const selectedMythologies = Object.entries(mythologyMap)
+        .filter(([entityId]) => query.includes(entityId))
+        .map(([, mythology]) => mythology)
+
+      // If multiple mythologies, use 'Mixed', otherwise use the single one or default
+      const mythology = selectedMythologies.length > 1
+        ? 'Mixed'
+        : (selectedMythologies[0] || currentMythology.value)
+
+      const starData = convertMultipleSparqlResults(
+        results.value as SparqlMythologyResult[],
+        mythology,
+        1,
+        useDomainClustering.value
+      )
+
+      // Apply dense-domain filter if enabled
+      setConstellationData(filterDenseDomains(starData, pureDomainsOnly.value))
+
+      console.log(`Generated ${starData.length} stars for ${mythology} mythology`)
+    }
+  } catch (err) {
+    console.error('Failed to execute SPARQL query:', err)
+  }
+}
+
+const handleQueryUpdate = (query: string) => {
+  // Extract mythology types from query
+  const selectedMythologies = Object.entries(mythologyMap)
+    .filter(([entityId]) => query.includes(entityId))
+    .map(([, mythology]) => mythology)
+
+  // Set to first found mythology or keep current
+  if (selectedMythologies.length > 0) {
+    currentMythology.value = selectedMythologies.length > 1
+      ? 'Mixed'
+      : (selectedMythologies[0] || 'Greek')
   }
 }
 
 onMounted(() => {
+  applyLayout(isFullscreen.value)
+  stopLayoutWatch = watch(isFullscreen, (newValue) => {
+    applyLayout(newValue)
+  })
   window.addEventListener('keydown', handleKeyPress)
 })
 
 onUnmounted(() => {
   window.removeEventListener('keydown', handleKeyPress)
+  if (stopLayoutWatch) stopLayoutWatch()
+  applyLayout(false)
 })
 </script>
 
 <template>
-  <div v-if="isFullscreen" class="fullscreen-wrapper">
-    <ThreeStarField />
+  <div v-if="isCanvasFullscreen" class="fullscreen-wrapper">
+    <ThreeStarField :constellation-data="constellationData" />
     <div class="fullscreen-controls">
       <UButton
-        @click="toggleFullscreen"
+        @click="exitCanvasFullscreen"
         icon="i-heroicons-x-mark"
         size="sm"
         color="neutral"
@@ -43,16 +166,69 @@ onUnmounted(() => {
       <p class="subtitle">Explore mythological deities connected across cultures in an interactive 3D visualization</p>
       <div class="controls">
         <UButton
-          @click="toggleFullscreen"
+          @click="toggleCanvasFullscreen"
           icon="i-heroicons-arrows-pointing-out"
           size="lg"
           label="Enter Fullscreen (F)"
         />
+        <UButton
+          @click="showSparqlSearch = !showSparqlSearch"
+          :icon="showSparqlSearch ? 'i-heroicons-eye-slash' : 'i-heroicons-magnifying-glass'"
+          size="lg"
+          color="primary"
+          variant="outline"
+          :label="showSparqlSearch ? 'Hide Search' : 'SPARQL Search'"
+        />
       </div>
     </section>
 
-    <section class="canvas-section">
-      <ThreeStarField />
+    <!-- SPARQL Search Section -->
+    <section v-if="showSparqlSearch" class="sparql-section">
+      <UCard>
+        <div class="clustering-toggle mb-4">
+          <UCheckbox
+            v-model="useDomainClustering"
+            label="Group by Domain (with clustering and connections)"
+          />
+        </div>
+
+        <SparqlSearch
+          @query="handleQueryUpdate"
+          @run="handleQueryRun"
+          @pure-filter="handlePureFilterChange"
+        />
+        <div v-if="loading" class="mt-4">
+          <UAlert
+            icon="i-heroicons-arrow-path"
+            color="info"
+            variant="subtle"
+            title="Loading..."
+            description="Fetching deity data from Wikidata..."
+          />
+        </div>
+        <div v-if="error" class="mt-4">
+          <UAlert
+            icon="i-heroicons-exclamation-triangle"
+            color="warning"
+            variant="subtle"
+            title="Error"
+            :description="error.message"
+          />
+        </div>
+        <div v-if="constellationData.length > 0" class="mt-4">
+          <UAlert
+            icon="i-heroicons-star"
+            color="success"
+            variant="subtle"
+            title="Success!"
+            :description="`Generated ${constellationData.length} stars for ${currentMythology} mythology. View them in the constellation below!`"
+          />
+        </div>
+      </UCard>
+    </section>
+
+    <section class="canvas-section" :class="{ 'canvas-fullscreen': isCanvasFullscreen }">
+      <ThreeStarField :constellation-data="constellationData" />
     </section>
 
     <section class="content">
@@ -60,6 +236,10 @@ onUnmounted(() => {
         <div class="info-card">
           <h3>Mythology Visualization</h3>
           <p>Explore deities from Greek, Norse, Egyptian, Hindu, and Celtic mythologies as interactive stars in 3D space.</p>
+        </div>
+        <div class="info-card">
+          <h3>SPARQL Search</h3>
+          <p>Use the SPARQL search to query Wikidata for mythological figures and generate custom constellations in real-time.</p>
         </div>
         <div class="info-card">
           <h3>Interactive Connections</h3>
@@ -77,9 +257,12 @@ onUnmounted(() => {
 <style scoped>
 
 .fullscreen-wrapper {
-  width: 100%;
-  height: 100%;
-  position: relative;
+  width: 100vw;
+  height: 100vh;
+  position: fixed;
+  top: 0;
+  left: 0;
+  z-index: 1000;
 }
 
 .fullscreen-controls {
@@ -132,6 +315,35 @@ onUnmounted(() => {
   border-radius: 1rem;
   overflow: hidden;
   box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.1), 0 8px 10px -6px rgb(0 0 0 / 0.1);
+  transition: height 0.25s ease, width 0.25s ease, border-radius 0.2s ease;
+}
+
+.canvas-fullscreen {
+   height: calc(100vh - 2rem);
+   width: 100vw;
+   margin-left: calc(-50vw + 50%);
+   margin-right: calc(-50vw + 50%);
+   border-radius: 0;
+   box-shadow: none;
+}
+
+/* SPARQL Search section */
+.sparql-section {
+  padding: 2rem 0;
+}
+
+.clustering-toggle {
+  padding: 1rem;
+  background: rgb(249 250 251);
+  border-radius: 0.75rem;
+  border: 1px solid rgb(229 231 235);
+}
+
+@media (prefers-color-scheme: dark) {
+  .clustering-toggle {
+    background: rgb(31 41 55);
+    border-color: rgb(55 65 81);
+  }
 }
 
 /* Content section */
@@ -141,7 +353,7 @@ onUnmounted(() => {
 
 .info-grid {
   display: grid;
-  grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+  grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
   gap: 2rem;
 }
 

@@ -10,14 +10,18 @@ import {DEFAULT_WIKIDATA_PREFIXES, SparqlQueryBuilder, createUnionBlock} from '~
  * Includes description, family (parents/children), domains, image, and English Wikipedia article
  */
 export interface DeityQueryOptions {
-    /** Instance-of class for the deity (default: Greek deity) */
-    instanceId?: string
+    /** Instance-of class for the deity. Accepts single or multiple. If not provided, defaults to DEFAULT_INSTANCE */
+    instanceId?: string | string[]
+    /** Additional instance IDs to include (union). */
+    instanceIds?: string[]
     /** Additional FILTER/graph patterns injected into the WHERE block */
     extraFilters?: string
     /** Maximum rows to return */
     limit?: number
     /** Include domain information */
     includeDomain?: boolean
+    /** Require a domain (non-empty) */
+    requireDomain?: boolean
     /** Include family information (parents/children) */
     includeFamily?: boolean
     /** Include image information */
@@ -68,10 +72,12 @@ export const DEITY_WIKIPEDIA_OPTIONAL = `
 `
 
 export function buildDeityQuery({
-  instanceId = DEFAULT_INSTANCE,
+  instanceId,
+  instanceIds = [],
   extraFilters = '',
   limit = 200,
   includeDomain = true,
+  requireDomain = false,
   includeFamily = true,
   includeImage = true,
   includeArticle = true,
@@ -80,8 +86,29 @@ export function buildDeityQuery({
 }: DeityQueryOptions = {}): string {
   const builder = new SparqlQueryBuilder(DEFAULT_WIKIDATA_PREFIXES)
 
-  // Build SELECT list based on toggles
+  const ids: string[] = []
+  const addId = (id?: string | string[]) => {
+    if (!id) return
+    if (Array.isArray(id)) {
+      ids.push(...id.filter((i) => i.startsWith('wd:')))
+    } else if (id.startsWith('wd:')) {
+      ids.push(id)
+    }
+  }
+  addId(instanceId)
+  addId(instanceIds)
+  const uniqueIds = Array.from(new Set(ids.filter(Boolean)))
+
+  if (uniqueIds.length === 0) {
+    uniqueIds.push(DEFAULT_INSTANCE)
+  }
+
   const selectFields: string[] = ['?deity ?deityLabel']
+
+  if (uniqueIds.length > 1) {
+    selectFields.push('(SAMPLE(?instance) AS ?instance)')
+  }
+
   if (includeDescription) selectFields.push('(SAMPLE(?description) AS ?description)')
   if (includeFamily) {
     selectFields.push(
@@ -92,26 +119,36 @@ export function buildDeityQuery({
   }
   if (includeDomain) selectFields.push('(GROUP_CONCAT(DISTINCT ?domainLabel; separator=", ") AS ?domains)')
   if (includeImage) selectFields.push('(SAMPLE(?image) AS ?image)')
-  if (includeArticle) selectFields.push('?article')
+  if (includeArticle) selectFields.push('(SAMPLE(?article) AS ?article)')
 
-  builder.select(...selectFields).where(`?deity wdt:P31 ${instanceId} .`)
+  builder.select(...selectFields)
+
+  if (uniqueIds.length <= 1) {
+    builder.where(`?deity wdt:P31 ${uniqueIds[0] || DEFAULT_INSTANCE} .`)
+  } else {
+    builder.where(`VALUES ?instance { ${uniqueIds.join(' ')} }`)
+    builder.where('?deity wdt:P31 ?instance .')
+  }
 
   if (extraFilters) builder.where(extraFilters)
 
-  // Quality filters stay the same (ensure description filter is only applied if description requested)
   DEITY_QUALITY_FILTERS.forEach((f) => {
     if (!includeDescription && f.includes('schema:description')) return
     builder.filter(f)
   })
 
-  // Optional blocks based on toggles
   if (includeDescription) builder.optional(DEITY_DESCRIPTION_OPTIONAL)
   if (includeFamily) DEITY_FAMILY_OPTIONALS.forEach((opt) => builder.optional(opt))
-  if (includeDomain) builder.optional(DEITY_DOMAIN_UNION)
+
+  if (requireDomain) {
+    builder.where(DEITY_DOMAIN_UNION)
+  } else if (includeDomain) {
+    builder.optional(DEITY_DOMAIN_UNION)
+  }
+
   if (includeImage) builder.optional(DEITY_IMAGE_OPTIONAL)
   if (includeArticle) builder.optional(DEITY_WIKIPEDIA_OPTIONAL)
 
-  // SERVICE label lines based on toggles
   const serviceLines = ['?deity rdfs:label ?deityLabel.']
   if (includeFamily) {
     serviceLines.push(
@@ -124,27 +161,22 @@ export function buildDeityQuery({
 
   builder.serviceLabel(serviceLines, 'en')
 
-  // GROUP BY must include selected non-aggregated variables
   const groupBy: string[] = ['?deity', '?deityLabel']
-  if (includeArticle) groupBy.push('?article')
 
   builder.groupBy(...groupBy).orderBy(...orderBy).limit(limit)
 
   return builder.build()
 }
 
-// Predefined culture-specific deity queries using the rich template
 export const GREEK_GODS_QUERY = buildDeityQuery({instanceId: 'wd:Q22989102'})
 export const NORSE_GODS_QUERY = buildDeityQuery({instanceId: 'wd:Q16513881'})
 export const EGYPTIAN_GODS_QUERY = buildDeityQuery({instanceId: 'wd:Q146083'})
 export const HINDU_GODS_QUERY = buildDeityQuery({instanceId: 'wd:Q979507'})
 export const CELTIC_GODS_QUERY = buildDeityQuery({
-    // Use generic deity class but restrict to Ireland/UK region
     instanceId: 'wd:Q465434',
     extraFilters: '?deity (wdt:P17|wdt:P131) wd:Q27 .',
 })
 
-// Relationships and family queries kept for specialized use cases
 export const MYTHOLOGY_RELATIONSHIPS_QUERY = new SparqlQueryBuilder()
     .select('?subject ?subjectLabel ?property ?propertyLabel ?object ?objectLabel')
     .where('?subject wdt:P31 wd:Q11014 .')

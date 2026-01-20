@@ -6,6 +6,7 @@ const emit = defineEmits<{
   (e: 'query', value: string): void
   (e: 'results', value: Record<string, string>[]): void
   (e: 'run', value: string): void
+  (e: 'pure-filter', value: boolean): void
 }>()
 
 const deityTypes = [
@@ -16,8 +17,9 @@ const deityTypes = [
   { label: 'Celtic', value: 'wd:Q465434' },
 ]
 
-const selectedType = ref(deityTypes[0]!.value)
+const selectedTypes = ref<string[]>([deityTypes[0]!.value])
 const includeDomain = ref(true)
+const requireDomain = ref(false)
 const includeFamily = ref(true)
 const includeImage = ref(true)
 const includeArticle = ref(true)
@@ -25,11 +27,13 @@ const includeDescription = ref(true)
 const limit = ref(100)
 const orderBy = ref<string[]>(['?deityLabel'])
 const extraFilters = ref('')
+const pureDomainsOnly = ref(false)
 
 const builtQuery = computed(() =>
   buildDeityQuery({
-    instanceId: selectedType.value,
+    instanceIds: selectedTypes.value,
     includeDomain: includeDomain.value,
+    requireDomain: requireDomain.value,
     includeFamily: includeFamily.value,
     includeImage: includeImage.value,
     includeArticle: includeArticle.value,
@@ -41,6 +45,7 @@ const builtQuery = computed(() =>
 )
 
 watch(builtQuery, (q) => emit('query', q), { immediate: true })
+watch(pureDomainsOnly, (val) => emit('pure-filter', val), { immediate: true })
 
 function runQuery() {
   emit('run', builtQuery.value)
@@ -53,13 +58,14 @@ function runQuery() {
 
     <UForm class="controls">
       <div class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3">
-        <UFormField label="Deity type">
+        <UFormField label="Deity types (multi)">
           <USelect
-            v-model="selectedType"
+            v-model="selectedTypes"
             :items="deityTypes"
             value-attribute="value"
             option-attribute="label"
-            placeholder="Select a deity type"
+            multiple
+            placeholder="Select one or more deity types"
           />
         </UFormField>
 
@@ -89,7 +95,9 @@ function runQuery() {
             <h3 class="text-lg font-semibold">Include</h3>
           </template>
           <div class="grid grid-cols-2 md:grid-cols-3 gap-2">
-            <UCheckbox v-model="includeDomain" label="Domain" />
+            <UCheckbox v-model="includeDomain" label="Include Domain" />
+            <UCheckbox v-model="requireDomain" :disabled="!includeDomain" label="Only gods with domain" />
+            <UCheckbox v-model="pureDomainsOnly" :disabled="!includeDomain" label="Only dense domains (≥3)" />
             <UCheckbox v-model="includeFamily" label="Family (parents/children)" />
             <UCheckbox v-model="includeImage" label="Image" />
             <UCheckbox v-model="includeArticle" label="Wikipedia article" />

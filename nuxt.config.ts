@@ -4,4 +4,9 @@ export default defineNuxtConfig({
     devtools: {enabled: true},
     modules: ['@nuxt/eslint', '@nuxt/ui'],
     css: ['~/assets/css/main.css'],
+    vue: {
+        compilerOptions: {
+            isCustomElement: (tag) => tag === 'solid-vcard-card'
+        }
+    }
 })

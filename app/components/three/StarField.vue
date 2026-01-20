@@ -1,13 +1,28 @@
 <script setup lang="ts">
 import * as THREE from 'three'
-import { ref, onMounted, onUnmounted } from 'vue'
+import { ref, onMounted, onUnmounted, watch } from 'vue'
 import { OrbitControls } from 'three/addons'
 import { mythData } from '~/data/mythologyData'
+import type { StarData } from '~/data/mythologyData'
+
+const props = defineProps<{
+  constellationData?: StarData[]
+}>()
 
 const canvasRef = ref<HTMLCanvasElement | null>(null)
 const containerRef = ref<HTMLElement | null>(null)
 const labelContainerRef = ref<HTMLElement | null>(null)
-const selectedStarInfo = ref<{ name: string; mythology: string } | null>(null)
+const selectedStarInfo = ref<{
+  name: string
+  mythology: string
+  description?: string
+  image?: string
+  domains?: string
+  fathers?: string
+  mothers?: string
+  children?: string
+  article?: string
+} | null>(null)
 
 const { scene, camera, renderer, init, startAnimationLoop, dispose: disposeThree } = useThree(canvasRef, {
   antialias: true,
@@ -16,23 +31,32 @@ const { scene, camera, renderer, init, startAnimationLoop, dispose: disposeThree
 
 let controls: OrbitControls | null = null
 let mythologyViz: ReturnType<typeof useMythologyVisualization> | null = null
+let cleanup: (() => void) | undefined
 
-// Create the mythology visualization
 const setupScene = () => {
   if (!scene.value || !camera.value || !renderer.value || !labelContainerRef.value) return
 
-  // Set camera position
+  if (mythologyViz) {
+    mythologyViz.dispose()
+  }
+
   camera.value.position.set(0, 0, 15)
 
-  // Setup orbit controls
-  controls = new OrbitControls(camera.value, renderer.value.domElement)
-  controls.enableDamping = true
+  if (!controls) {
+    controls = new OrbitControls(camera.value, renderer.value.domElement)
+    controls.enableDamping = true
+  }
 
-  // Add ambient light
-  scene.value.add(new THREE.AmbientLight(0xffffff, 0.5))
+  if (scene.value.children.filter(c => c instanceof THREE.AmbientLight).length === 0) {
+    scene.value.add(new THREE.AmbientLight(0xffffff, 0.5))
+  }
+
+  const dataToVisualize = props.constellationData && props.constellationData.length > 0
+    ? props.constellationData
+    : mythData
 
   mythologyViz = useMythologyVisualization(scene.value, camera.value, renderer.value, labelContainerRef.value)
-  mythologyViz.init(mythData)
+  mythologyViz.init(dataToVisualize)
 
   const handleClick = (event: MouseEvent) => {
     if (!mythologyViz) return
@@ -40,6 +64,13 @@ const setupScene = () => {
       selectedStarInfo.value = {
         name: data.name,
         mythology: data.mythology,
+        description: data.description,
+        image: data.image,
+        domains: data.domains,
+        fathers: data.fathers,
+        mothers: data.mothers,
+        children: data.children,
+        article: data.article,
       }
     })
   }
@@ -47,24 +78,29 @@ const setupScene = () => {
   window.addEventListener('click', handleClick)
 
   // Animation loop
-  startAnimationLoop((time) => {
+  startAnimationLoop(() => {
     if (mythologyViz) {
       mythologyViz.updateLabels()
+      mythologyViz.animateStarfield(performance.now())
     }
     if (controls) {
       controls.update()
     }
   })
 
-  // Cleanup on unmount
-  return () => {
+  cleanup = () => {
     window.removeEventListener('click', handleClick)
     if (mythologyViz) {
       mythologyViz.dispose()
     }
-    disposeThree()
   }
 }
+
+watch(() => props.constellationData, () => {
+  if (scene.value && camera.value && renderer.value && labelContainerRef.value) {
+    setupScene()
+  }
+}, { deep: true })
 
 onMounted(() => {
   init()
@@ -72,8 +108,14 @@ onMounted(() => {
 })
 
 onUnmounted(() => {
+  if (cleanup) {
+    cleanup()
+  }
   if (mythologyViz) {
     mythologyViz.dispose()
+  }
+  if (controls) {
+    controls.dispose()
   }
   disposeThree()
 })
@@ -84,7 +126,6 @@ onUnmounted(() => {
     <canvas ref="canvasRef" class="three-canvas" />
     <div ref="labelContainerRef" class="label-container"></div>
 
-    <!-- Star info panel -->
     <transition
       enter-active-class="transition duration-200 ease-out"
       enter-from-class="opacity-0 translate-y-2"
@@ -94,9 +135,55 @@ onUnmounted(() => {
       leave-to-class="opacity-0 translate-y-2"
     >
       <div v-if="selectedStarInfo" class="star-info-panel">
+        <button class="close-btn" @click="selectedStarInfo = null">✕</button>
+
+        <div v-if="selectedStarInfo.image" class="deity-image">
+          <img :src="selectedStarInfo.image" :alt="selectedStarInfo.name" />
+        </div>
+
         <div class="star-info-content">
           <h3>{{ selectedStarInfo.name }}</h3>
-          <p class="mythology-label">{{ selectedStarInfo.mythology }} Mythology</p>
+
+          <div v-if="selectedStarInfo.mythology" class="info-section">
+            <h4>Mythology</h4>
+            <p class="info-text">{{selectedStarInfo.mythology}}</p>
+          </div>
+
+          <div v-if="selectedStarInfo.description" class="info-section">
+            <h4>Description</h4>
+            <p class="info-text">{{ selectedStarInfo.description }}</p>
+          </div>
+
+          <div v-if="selectedStarInfo.domains" class="info-section">
+            <h4>Domains</h4>
+            <p class="info-text">{{ selectedStarInfo.domains }}</p>
+          </div>
+
+          <div v-if="selectedStarInfo.fathers" class="info-section">
+            <h4>Father(s)</h4>
+            <p class="info-text">{{ selectedStarInfo.fathers }}</p>
+          </div>
+
+          <div v-if="selectedStarInfo.mothers" class="info-section">
+            <h4>Mother(s)</h4>
+            <p class="info-text">{{ selectedStarInfo.mothers }}</p>
+          </div>
+
+          <div v-if="selectedStarInfo.children" class="info-section">
+            <h4>Children</h4>
+            <p class="info-text">{{ selectedStarInfo.children }}</p>
+          </div>
+
+          <div v-if="selectedStarInfo.article" class="info-section">
+            <a
+              :href="selectedStarInfo.article"
+              target="_blank"
+              rel="noopener noreferrer"
+              class="wiki-link"
+            >
+              View on Wikipedia →
+            </a>
+          </div>
         </div>
       </div>
     </transition>
@@ -127,45 +214,148 @@ onUnmounted(() => {
   z-index: 1;
 }
 
-.star-info-panel {
+:global(.mythology-label) {
   position: absolute;
+  color: rgba(255, 255, 255, 0.9);
+  font-size: 10px;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 1px;
+  text-shadow: 0 0 6px rgba(0, 0, 0, 0.8);
+  pointer-events: none;
+  white-space: nowrap;
+  transform: translate(-50%, -50%);
+  z-index: 2;
+}
+
+.star-info-panel {
+  position: fixed;
   bottom: 20px;
   left: 20px;
-  background: rgba(0, 0, 0, 0.8);
+  max-width: 500px;
+  width: calc(100vw - 40px);
+  max-height: calc(100vh - 40px);
+  background: rgba(0, 0, 0, 0.95);
   border: 1px solid rgba(255, 255, 255, 0.2);
-  border-radius: 8px;
-  padding: 16px;
-  z-index: 10;
+  border-radius: 12px;
+  padding: 20px;
+  z-index: 1000;
   backdrop-filter: blur(10px);
+  overflow-y: auto;
+  box-shadow: 0 20px 25px -5px rgb(0 0 0 / 0.5);
+}
+
+@media (min-width: 640px) {
+  .star-info-panel {
+    width: auto;
+    min-width: 320px;
+  }
+}
+
+.close-btn {
+  position: absolute;
+  top: 12px;
+  right: 12px;
+  background: transparent;
+  border: none;
+  color: rgba(255, 255, 255, 0.7);
+  font-size: 20px;
+  cursor: pointer;
+  padding: 4px 8px;
+  transition: color 0.2s;
+}
+
+.close-btn:hover {
+  color: rgba(255, 255, 255, 1);
+}
+
+.deity-image {
+  width: 100%;
+  height: 200px;
+  overflow: hidden;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  background: rgba(255, 255, 255, 0.05);
+}
+
+.deity-image img {
+  width: 100%;
+  height: 100%;
+  object-fit: cover;
 }
 
 .star-info-content {
   color: white;
+  padding-right: 8px;
 }
 
 .star-info-content h3 {
   margin: 0 0 8px 0;
-  font-size: 18px;
+  font-size: 22px;
+  font-weight: 700;
+  color: #fff;
+}
+
+
+.info-section {
+  margin-bottom: 16px;
+  padding-bottom: 12px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+}
+
+.info-section:last-child {
+  border-bottom: none;
+  margin-bottom: 0;
+}
+
+.info-section h4 {
+  margin: 0 0 6px 0;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.5);
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
   font-weight: 600;
 }
 
-.mythology-label {
+.info-text {
   margin: 0;
   font-size: 14px;
-  color: rgba(255, 255, 255, 0.7);
+  color: rgba(255, 255, 255, 0.8);
+  line-height: 1.5;
+  word-break: break-word;
 }
 
-/* Global style for mythology labels positioned within container */
-:global(.mythology-label) {
-  position: absolute;
-  font-size: 12px;
-  color: white;
-  text-shadow: 0 0 4px rgba(0, 0, 0, 0.8);
-  pointer-events: none;
-  white-space: nowrap;
-  transform: translate(-50%, -50%);
-  font-weight: 500;
-  z-index: 5;
+.wiki-link {
+  display: inline-block;
+  color: #3b82f6;
+  text-decoration: none;
+  font-size: 14px;
+  transition: color 0.2s;
+  margin-top: 8px;
+}
+
+.wiki-link:hover {
+  color: #60a5fa;
+  text-decoration: underline;
+}
+
+/* Scrollbar styling */
+.star-info-panel::-webkit-scrollbar {
+  width: 6px;
+}
+
+.star-info-panel::-webkit-scrollbar-track {
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 3px;
+}
+
+.star-info-panel::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.2);
+  border-radius: 3px;
+}
+
+.star-info-panel::-webkit-scrollbar-thumb:hover {
+  background: rgba(255, 255, 255, 0.3);
 }
 </style>
 

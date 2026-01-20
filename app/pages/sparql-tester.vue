@@ -29,6 +29,20 @@ function extractDomain(url: string): string {
     return url
   }
 }
+
+function isImageField(key: string, value: unknown): boolean {
+  if (!value) return false
+  const val = String(value)
+  const lowerKey = key.toLowerCase()
+  const imageExtRegex = /\.(png|jpe?g|gif|webp|avif|svg)$/i
+
+  if (imageExtRegex.test(val)) return true
+  if (lowerKey.includes('image') || lowerKey.includes('img') || lowerKey.includes('photo') || lowerKey.includes('picture')) {
+    return val.startsWith('http')
+  }
+
+  return false
+}
 </script>
 
 <template>
@@ -119,10 +133,26 @@ function extractDomain(url: string): string {
             <tbody>
               <tr v-for="(row, idx) in rows" :key="idx" class="border-b border-slate-100 dark:border-slate-800 hover:bg-primary/5 transition-colors">
                 <td v-for="key in headers" :key="key" class="px-4 py-3 text-slate-700 dark:text-slate-300">
-                  <ULink v-if="row[key] && (row[key] as string).startsWith('http')" :to="row[key]" target="_blank" color="primary" class="underline">
-                    {{ extractDomain(row[key]) }}
-                  </ULink>
-                  <span v-else class="break-words">{{ row[key] || '-' }}</span>
+                  <div class="flex items-center gap-2">
+                    <img
+                      v-if="isImageField(key, row[key])"
+                      :src="row[key]"
+                      :alt="`${key} thumbnail`"
+                      class="h-16 w-16 object-cover rounded-md border border-slate-200 dark:border-slate-700 bg-slate-100 dark:bg-slate-800"
+                      loading="lazy"
+                      referrerpolicy="no-referrer"
+                    />
+                    <a
+                      v-else-if="row[key] && (row[key] as string).startsWith('http')"
+                      :href="String(row[key])"
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      class="text-primary underline hover:text-primary-dark"
+                    >
+                      {{ extractDomain(String(row[key])) }}
+                    </a>
+                    <span v-else class="break-words">{{ row[key] || '-' }}</span>
+                  </div>
                 </td>
               </tr>
             </tbody>

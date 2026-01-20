@@ -11,6 +11,7 @@
   },
   "dependencies": {
     "@iconify-json/heroicons": "^1.2.3",
+    "@kiliankil/solid-vcard-card": "^1.2.0",
     "@nuxt/eslint": "1.12.1",
     "@nuxt/ui": "4.3.0",
     "eslint": "^9.39.2",
