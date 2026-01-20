@@ -49,7 +49,9 @@ const loadWebmentions = async () => {
   error.value = null
 
   try {
-    const query = props.target ? `?target=${encodeURIComponent(props.target)}` : ''
+    // Use target prop, or fall back to current page URL
+    const targetUrl = props.target || (typeof window !== 'undefined' ? window.location.href : '')
+    const query = targetUrl ? `?target=${encodeURIComponent(targetUrl)}` : ''
     const response = await $fetch<{ success: boolean; webmentions: Webmention[] }>(
       `/api/webmentions${query}`
     )
