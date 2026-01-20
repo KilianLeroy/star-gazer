@@ -4,6 +4,27 @@ import type { Webmention } from '../utils/webmention'
 
 const webmentionsFilePath = join(process.cwd(), 'public', 'data', 'webmentions.json')
 
+/**
+ * Normalize a URL for comparison:
+ * - Parse the URL
+ * - Remove trailing slash from pathname if it's just "/"
+ * - Return the normalized URL
+ */
+function normalizeUrl(urlString: string): string {
+  try {
+    const url = new URL(urlString)
+    // Remove trailing slash only from root path
+    if (url.pathname === '/') {
+      url.pathname = ''
+    } else if (url.pathname.endsWith('/')) {
+      url.pathname = url.pathname.slice(0, -1)
+    }
+    return url.toString().replace(/\/$/, '') // Remove trailing slash from full URL
+  } catch (err) {
+    return urlString
+  }
+}
+
 export default defineEventHandler(async (event) => {
   const query = getQuery(event)
   const target = query.target as string | undefined
@@ -19,7 +40,8 @@ export default defineEventHandler(async (event) => {
     }
 
     if (target) {
-      webmentions = webmentions.filter(wm => wm.target === target)
+      const normalizedTarget = normalizeUrl(target)
+      webmentions = webmentions.filter(wm => normalizeUrl(wm.target) === normalizedTarget)
     }
 
     webmentions.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
