@@ -21,6 +21,12 @@ export function useMythologyVisualization(
   let starfieldPhases: Float32Array | null = null
   const mythologyStarData = new Map<THREE.Sprite, { baseScale: number; pulseSpeed: number; pulsePhase: number }>()
 
+  // Fog configuration for fade effect
+  const FOG_NEAR = 20
+  const FOG_FAR = 80
+  const LABEL_FADE_START = 20
+  const LABEL_FADE_END = 80
+
   // ...existing code...
 
   /**
@@ -215,6 +221,9 @@ export function useMythologyVisualization(
     // Clear previous data
     clearScene()
 
+    // Add fog effect for fade when camera moves far
+    scene.fog = new THREE.Fog(0x000510, FOG_NEAR, FOG_FAR)
+
     // Add background starfield
     const starfield = createStarfield()
     scene.add(starfield)
@@ -405,6 +414,9 @@ export function useMythologyVisualization(
    * Update label positions in screen space relative to canvas container
    */
   function updateLabels(): void {
+    // Get camera position to calculate distance
+    const cameraPos = (camera as THREE.PerspectiveCamera).position
+
     labels.forEach(({ element, object }) => {
       const pos = object.position.clone()
       pos.project(camera as THREE.PerspectiveCamera)
@@ -420,10 +432,25 @@ export function useMythologyVisualization(
       // Check if the star is visible (in front of camera = z < 1 and > -1)
       const isVisible = pos.z < 1 && pos.z > -1
 
-      if (isVisible && x >= 0 && x <= size.x && y >= 0 && y <= size.y) {
+      // Calculate distance from camera to star for fade effect
+      const distanceFromCamera = cameraPos.distanceTo(object.position)
+      let opacity = 1.0
+
+      // Fade out labels when camera gets too far
+      if (distanceFromCamera > LABEL_FADE_START) {
+        if (distanceFromCamera >= LABEL_FADE_END) {
+          opacity = 0
+        } else {
+          // Linear interpolation between start and end distance
+          opacity = 1 - (distanceFromCamera - LABEL_FADE_START) / (LABEL_FADE_END - LABEL_FADE_START)
+        }
+      }
+
+      if (isVisible && x >= 0 && x <= size.x && y >= 0 && y <= size.y && opacity > 0) {
         element.style.display = 'block'
         element.style.left = `${x}px`
         element.style.top = `${y}px`
+        element.style.opacity = opacity.toString()
       } else {
         element.style.display = 'none'
       }

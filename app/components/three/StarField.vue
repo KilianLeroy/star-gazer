@@ -45,6 +45,8 @@ const setupScene = () => {
   if (!controls) {
     controls = new OrbitControls(camera.value, renderer.value.domElement)
     controls.enableDamping = true
+    controls.minDistance = 5  // Minimum zoom distance
+    controls.maxDistance = 100  // Maximum zoom distance
   }
 
   if (scene.value.children.filter(c => c instanceof THREE.AmbientLight).length === 0) {
