@@ -10,13 +10,20 @@ interface Webmention {
   type?: 'mention' | 'reply' | 'like' | 'repost'
   author?: {
     name?: string
-    photo?: string
+    photo?: string | { value: string; alt: string }
     url?: string
   }
   content?: {
     text?: string
     html?: string
   }
+}
+
+const getPhotoUrl = (photo?: string | { value: string; alt: string }): string | undefined => {
+  if (!photo) return undefined
+  if (typeof photo === 'string') return photo
+  if (typeof photo === 'object' && 'value' in photo) return photo.value
+  return undefined
 }
 
 interface Props {
@@ -124,9 +131,9 @@ defineExpose({
           <div class="webmention-header">
             <div class="author-info">
               <img
-                v-if="wm.author?.photo"
-                :src="wm.author.photo"
-                :alt="wm.author.name || 'Anonymous'"
+                v-if="getPhotoUrl(wm.author?.photo)"
+                :src="getPhotoUrl(wm.author?.photo)"
+                :alt="wm.author?.name || 'Anonymous'"
                 class="author-photo"
               />
               <div v-else class="author-photo-placeholder">
@@ -176,9 +183,9 @@ defineExpose({
             :title="wm.author?.name || 'Anonymous'"
           >
             <img
-              v-if="wm.author?.photo"
-              :src="wm.author.photo"
-              :alt="wm.author.name || 'Anonymous'"
+              v-if="getPhotoUrl(wm.author?.photo)"
+              :src="getPhotoUrl(wm.author?.photo)"
+              :alt="wm.author?.name || 'Anonymous'"
               class="compact-photo"
             />
             <div v-else class="compact-photo-placeholder">
@@ -202,9 +209,9 @@ defineExpose({
             :title="wm.author?.name || 'Anonymous'"
           >
             <img
-              v-if="wm.author?.photo"
-              :src="wm.author.photo"
-              :alt="wm.author.name || 'Anonymous'"
+              v-if="getPhotoUrl(wm.author?.photo)"
+              :src="getPhotoUrl(wm.author?.photo)"
+              :alt="wm.author?.name || 'Anonymous'"
               class="compact-photo"
             />
             <div v-else class="compact-photo-placeholder">

@@ -9,7 +9,7 @@ export interface Webmention {
   type?: 'mention' | 'reply' | 'like' | 'repost'
   author?: {
     name?: string
-    photo?: string
+    photo?: string | { value: string; alt: string }
     url?: string
   }
   content?: {

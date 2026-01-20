@@ -18,12 +18,10 @@ export default defineEventHandler(async (event) => {
       webmentions = []
     }
 
-    // Filter by target if specified
     if (target) {
       webmentions = webmentions.filter(wm => wm.target === target)
     }
 
-    // Sort by timestamp, newest first
     webmentions.sort((a, b) => new Date(b.timestamp).getTime() - new Date(a.timestamp).getTime())
 
     return {
