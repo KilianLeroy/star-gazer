@@ -283,7 +283,7 @@ onUnmounted(() => {
 
 .subtitle {
   font-size: 1.25rem;
-  color: rgb(107 114 128);
+  color: hsl(var(--color-gray-500));
   margin-bottom: 2rem;
 }
 
@@ -321,16 +321,9 @@ onUnmounted(() => {
 
 .clustering-toggle {
   padding: 1rem;
-  background: rgb(249 250 251);
+  background-color: hsl(var(--color-gray-50));
   border-radius: 0.75rem;
-  border: 1px solid rgb(229 231 235);
-}
-
-@media (prefers-color-scheme: dark) {
-  .clustering-toggle {
-    background: rgb(31 41 55);
-    border-color: rgb(55 65 81);
-  }
+  border: 1px solid hsl(var(--color-gray-400));
 }
 
 /* Content section */
@@ -347,8 +340,8 @@ onUnmounted(() => {
 .info-card {
   padding: 2rem;
   border-radius: 0.75rem;
-  background: rgb(249 250 251);
-  border: 1px solid rgb(229 231 235);
+  background: rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(255, 255, 255, 0.1);
   transition: transform 0.2s, box-shadow 0.2s;
 }
 
@@ -361,11 +354,11 @@ onUnmounted(() => {
   font-size: 1.25rem;
   font-weight: 600;
   margin-bottom: 0.75rem;
-  color: rgb(17 24 39);
+  color: rgba(255, 255, 255, 0.9);
 }
 
 .info-card p {
-  color: rgb(107 114 128);
+  color: rgba(255, 255, 255, 0.7);
   line-height: 1.6;
 }
 
@@ -374,34 +367,10 @@ kbd {
   padding: 0.125rem 0.5rem;
   font-family: ui-monospace, monospace;
   font-size: 0.875rem;
-  background: rgb(243 244 246);
-  border: 1px solid rgb(209 213 219);
+  background-color: hsl(var(--color-gray-100));
+  border: 1px solid hsl(var(--color-gray-400));
   border-radius: 0.25rem;
   box-shadow: 0 1px 2px 0 rgb(0 0 0 / 0.05);
 }
 
-/* Dark mode support */
-@media (prefers-color-scheme: dark) {
-  .subtitle {
-    color: rgb(156 163 175);
-  }
-
-  .info-card {
-    background: rgb(31 41 55);
-    border-color: rgb(55 65 81);
-  }
-
-  .info-card h3 {
-    color: rgb(243 244 246);
-  }
-
-  .info-card p {
-    color: rgb(156 163 175);
-  }
-
-  kbd {
-    background: rgb(55 65 81);
-    border-color: rgb(75 85 99);
-  }
-}
 </style>

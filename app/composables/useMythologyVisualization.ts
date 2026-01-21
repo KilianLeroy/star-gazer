@@ -222,6 +222,27 @@ export function useMythologyVisualization(
       if (data.domainCluster) {
         const domainColor = getDomainColor(data.domainCluster)
         colorHex = parseInt(domainColor.replace('#', ''), 16)
+      } else {
+        // Assign colors based on mythology
+        switch (data.mythology) {
+          case 'Greek':
+            colorHex = 0x00BFFF // Deep sky blue
+            break
+          case 'Norse':
+            colorHex = 0x9370DB // Medium purple
+            break
+          case 'Egyptian':
+            colorHex = 0xFFA500 // Orange/gold
+            break
+          case 'Hindu':
+            colorHex = 0xFF4500 // Orange red
+            break
+          case 'Celtic':
+            colorHex = 0x32CD32 // Lime green
+            break
+          default:
+            colorHex = 0xffffff // White
+        }
       }
 
       const importance = data.relations.length

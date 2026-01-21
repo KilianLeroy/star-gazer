@@ -1,5 +1,4 @@
 <script setup lang="ts">
-
 import type {NavigationMenuItem} from "#ui/components/NavigationMenu.vue";
 
 const items = computed<NavigationMenuItem>(() => [{
@@ -11,22 +10,19 @@ const items = computed<NavigationMenuItem>(() => [{
 },{
   label: 'SPARQL testing',
   to: '/sparql-tester',
-}
-])
+}])
 
-const toast = useToast()
+const colorMode = useColorMode()
 
-const handleClick = () => {
-  console.log('clicked')
-  toast.add({
-    title: 'Fuck you',
-    description: 'Light mode is for pussies',
-    color: 'error'
-
-  })
-}
+const isDark = computed({
+  get() {
+    return colorMode.value === 'dark'
+  },
+  set() {
+    colorMode.preference = colorMode.value === 'dark' ? 'dark' : 'dark'
+  }
+})
 </script>
-
 
 <template>
   <div class="border-b-2 border-default">
@@ -35,11 +31,11 @@ const handleClick = () => {
         <UNavigationMenu :items="items"/>
         <template #right>
           <UButton
-              icon="i-heroicons-moon"
+              :icon="isDark ? 'i-heroicons-moon' : 'i-heroicons-sun'"
               variant="ghost"
               color="neutral"
               aria-label="Toggle theme"
-              :on-click="handleClick"
+              @click="isDark = !isDark"
           />
         </template>
       </UHeader>
